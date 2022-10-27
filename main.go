@@ -28,7 +28,7 @@ func callback(w http.ResponseWriter, r *http.Request) {
 
 	switch signal.Method {
 	case "ping":
-		fmt.Fprint(w, "pong")
+		fmt.Fprint(w, "ok")
 	case "addUser":
 		b := params.NewMessagesAddChatUserBuilder()
 		b.ChatID(signal.Object.(iris.AddUser).Chat)
