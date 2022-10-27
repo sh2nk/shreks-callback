@@ -50,6 +50,7 @@ func getEnv(key, fallback string) string {
 
 func init() {
 	VKToken = getEnv("SHREK_VK_TOKEN", "fallbacktoken")
+	Addr = getEnv("SHREK_PORT", ":5000")
 }
 
 func main() {
