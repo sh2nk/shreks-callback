@@ -2,7 +2,10 @@ module github.com/sh2nk/shreks-callback
 
 go 1.19
 
-require github.com/SevereCloud/vksdk/v2 v2.15.0
+require (
+	github.com/SevereCloud/vksdk/v2 v2.15.0
+	github.com/lib/pq v1.10.7
+)
 
 require (
 	github.com/klauspost/compress v1.15.8 // indirect

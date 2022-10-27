@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"database/sql"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/SevereCloud/vksdk/v2/api"
-	"github.com/SevereCloud/vksdk/v2/api/params"
+	_ "github.com/lib/pq"
 	iris "github.com/sh2nk/shreks-callback/iris-callback-api"
 )
 
@@ -15,46 +15,50 @@ var (
 	VK      *api.VK
 	VKToken string
 	Addr    string
+	PQURL   string
+	DB      *sql.DB
 )
 
 // TODO: make proper event system in iris api package.
 func callback(w http.ResponseWriter, r *http.Request) {
 	signal, err := iris.UnmarshalSignal(r.Body)
 	if err != nil {
+		log.Printf("Unmarshal signal error: %v", err)
 		http.Error(w, err.Error(), 500)
+		return
 	}
 
-	log.Printf("Got Iris %s signal!", signal.Method)
+	log.Printf("Got Iris %s signal!\n%v\n", signal.Method, signal)
 
 	switch signal.Method {
 	case "ping":
-		fmt.Fprint(w, "ok")
+		OnPing(w, signal)
 	case "addUser":
-		b := params.NewMessagesAddChatUserBuilder()
-		b.ChatID(signal.Object.(iris.AddUser).Chat)
-		b.UserID(signal.Object.(iris.AddUser).UserID)
-		_, err = VK.MessagesAddChatUser(b.Params)
-		if err != nil {
-			log.Printf("Couldn't add user to chat: %v", err)
-		}
+		OnAddUser(w, signal)
+	case "subscribeSignals":
+		OnSubscribeSignals(w, signal)
 	}
-}
-
-// Gets some values from env vars, otherwise returns fallback value
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
 }
 
 func init() {
 	VKToken = getEnv("SHREK_VK_TOKEN", "fallbacktoken")
 	Addr = getEnv("SHREK_PORT", ":5000")
+	PQURL = getEnv("POSTGRES_URL", "postgres://user:password@localhost:5432/s3cr3t")
 }
 
 func main() {
 	VK = api.NewVK(VKToken)
+
+	ctx := context.Background()
+
+	// Init db conection
+	DB, err := sql.Open("postgres", PQURL)
+	if err != nil {
+		log.Fatalf("Unable to connect to database: %v\n", err)
+	}
+	defer DB.Close()
+
+	createTables(ctx)
 
 	http.HandleFunc("/callback", callback)
 	log.Printf("Started callback route on %s...", Addr)
