@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -23,7 +24,11 @@ func callback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 	}
 
+	log.Printf("Got Iris %s signal!", signal.Method)
+
 	switch signal.Method {
+	case "ping":
+		fmt.Fprint(w, "pong")
 	case "addUser":
 		b := params.NewMessagesAddChatUserBuilder()
 		b.ChatID(signal.Object.(iris.AddUser).Chat)
@@ -52,5 +57,5 @@ func main() {
 
 	http.HandleFunc("/callback", callback)
 	log.Printf("Started callback route on %s...", Addr)
-	go http.ListenAndServe(Addr, nil)
+	http.ListenAndServe(Addr, nil)
 }
