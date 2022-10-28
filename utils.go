@@ -1,6 +1,11 @@
 package main
 
-import "os"
+import (
+	"math"
+	"math/rand"
+	"os"
+	"time"
+)
 
 // Gets some values from env vars, otherwise returns fallback value
 func getEnv(key, fallback string) string {
@@ -8,4 +13,9 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func randomInt32() int32 {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Int31n(math.MaxInt32)
 }
