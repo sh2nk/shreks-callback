@@ -21,6 +21,7 @@ func OnAddUser(ctx context.Context, w http.ResponseWriter, s iris.IrisSignal) {
 	_, err := VK.MessagesAddChatUser(b.Params)
 	if err != nil {
 		log.Printf("Couldn't add user to chat: %v", err)
+		sendMessage(fmt.Sprint(iris.Icons.Warn, "Ошибка добавления: ", err.Error()), cp.ChatID)
 	}
 }
 
@@ -30,8 +31,14 @@ func OnSubscribeSignals(ctx context.Context, w http.ResponseWriter, s iris.IrisS
 
 	}
 
+	sendMessage(fmt.Sprint(iris.Icons.Success, "Беседа распознана"), cp.ChatID)
+}
+
+func sendMessage(m string, chatID int) {
 	b := params.NewMessagesSendBuilder()
-	b.PeerID(2000000000 + cp.ChatID)
+	b.PeerID(2000000000 + chatID)
 	b.RandomID(int(randomInt32()))
-	b.Message(fmt.Sprint(iris.Icons.Success, "Беседа распознана"))
+	b.Message(m)
+
+	VK.MessagesSend(b.Params)
 }

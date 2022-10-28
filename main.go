@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/SevereCloud/vksdk/v2/api"
+	"github.com/SevereCloud/vksdk/v2/api/params"
 	_ "github.com/lib/pq"
 )
 
@@ -16,6 +17,7 @@ var (
 	Addr    string
 	PQURL   string
 	DB      *sql.DB
+	UserID  int
 )
 
 func init() {
@@ -26,9 +28,18 @@ func init() {
 
 func main() {
 	var err error
+	ctx := context.Background()
+
+	// Connect to VK API
 	VK = api.NewVK(VKToken)
 
-	ctx := context.Background()
+	// Get current user ID
+	b := params.NewUsersGetBuilder()
+	resp, err := VK.UsersGet(b.Params)
+	if err != nil {
+		log.Fatalf("Unable to get user id: %v\n", err)
+	}
+	UserID = resp[0].ID
 
 	// Init db conection
 	DB, err = sql.Open("postgres", PQURL)
@@ -37,11 +48,14 @@ func main() {
 	}
 	defer DB.Close()
 
+	// DB tables init
 	createTables(ctx)
 
-	mux := http.NewServeMux()
-	mux.Handle("/callback")
+	// Register new userbot
+	registerSecret(ctx, UserID, getEnv("USERBOT_SECRET", "s0me-s3r1ous-sh1t"))
 
+	mux := http.NewServeMux()
+	mux.Handle("/callback", Auth(ctx, Callback(ctx, http.HandlerFunc(OK))))
 	log.Printf("Started callback route on %s...", Addr)
-	http.ListenAndServe(Addr, nil)
+	http.ListenAndServe(Addr, mux)
 }

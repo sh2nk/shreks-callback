@@ -23,7 +23,7 @@ func createTables(ctx context.Context) {
 	}
 	defer query.Close()
 
-	query, err = DB.PrepareContext(ctx, "CREATE TABLE IF NOT EXISTS users (userID integer primary key, secret text);")
+	query, err = DB.PrepareContext(ctx, "CREATE TABLE IF NOT EXISTS userbots (userID integer primary key, secret text);")
 	if err != nil {
 		log.Fatalf("Could not prepare db create query:%v\n", err)
 	}
@@ -65,8 +65,8 @@ func setChatPair(ctx context.Context, cp ChatPair) {
 	}
 }
 
-func registerSecret(ctx context.Context, userID string) {
-	query, err := DB.PrepareContext(ctx, `INSERT INTO users SET userID = $1, secret = $2
+func registerSecret(ctx context.Context, userID int, secret string) {
+	query, err := DB.PrepareContext(ctx, `INSERT INTO userbots SET userID = $1, secret = $2
 										ON CONFLICT (userID) DO UPDATE SET secret = $2`)
 	if err != nil {
 		log.Fatalf("Could not prepare setChatPair query:%v\n", err)
@@ -75,4 +75,23 @@ func registerSecret(ctx context.Context, userID string) {
 	if err != nil {
 		log.Fatalf("Unable to get chat pair:%v\n", err)
 	}
+}
+
+func getSecret(ctx context.Context, userID int) string {
+	query, err := DB.PrepareContext(ctx, "SELECT * FROM userbots WHERE userID = $1;")
+	if err != nil {
+		log.Fatalf("Could not prepare getSecret query:%v\n", err)
+	}
+	res := query.QueryRowContext(ctx, userID)
+
+	var secret string
+	err = res.Scan(&secret)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return ""
+		} else {
+			log.Fatalf("Chat pair scan error:%v\n", err)
+		}
+	}
+	return secret
 }
