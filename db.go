@@ -23,7 +23,7 @@ func createTables(ctx context.Context) {
 	}
 	defer query.Close()
 
-	query, err := DB.PrepareContext(ctx, "CREATE TABLE IF NOT EXISTS users (userID integer primary key, secret text);")
+	query, err = DB.PrepareContext(ctx, "CREATE TABLE IF NOT EXISTS users (userID integer primary key, secret text);")
 	if err != nil {
 		log.Fatalf("Could not prepare db create query:%v\n", err)
 	}
@@ -71,7 +71,7 @@ func registerSecret(ctx context.Context, userID string) {
 	if err != nil {
 		log.Fatalf("Could not prepare setChatPair query:%v\n", err)
 	}
-	_, err = query.ExecContext(ctx, cp.UserID, cp.ChatCode, cp.ChatID)
+	_, err = query.ExecContext(ctx, userID)
 	if err != nil {
 		log.Fatalf("Unable to get chat pair:%v\n", err)
 	}

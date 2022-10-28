@@ -2,16 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/SevereCloud/vksdk/v2/api/params"
 	iris "github.com/sh2nk/shreks-callback/iris-callback-api"
 )
-
-func OnPing(ctx context.Context, w http.ResponseWriter, s iris.IrisSignal) {
-
-}
 
 func OnAddUser(ctx context.Context, w http.ResponseWriter, s iris.IrisSignal) {
 	b := params.NewMessagesAddChatUserBuilder()
@@ -36,5 +33,5 @@ func OnSubscribeSignals(ctx context.Context, w http.ResponseWriter, s iris.IrisS
 	b := params.NewMessagesSendBuilder()
 	b.PeerID(2000000000 + cp.ChatID)
 	b.RandomID(int(randomInt32()))
-	b.Message("✅ Беседа распознана")
+	b.Message(fmt.Sprint(iris.Icons.Success, "Беседа распознана"))
 }
