@@ -54,8 +54,12 @@ func getChatPair(ctx context.Context, userID int, chat string) (ChatPair, bool) 
 }
 
 func setChatPair(ctx context.Context, cp ChatPair) {
-	query, err := DB.PrepareContext(ctx, `INSERT INTO chatpairs SET userID = $1, chatCode = $2, chatID = $3
-										ON CONFLICT (userID) DO UPDATE SET chatID = $3`)
+	query, err := DB.PrepareContext(ctx, `
+	INSERT INTO chatpairs (userID, chatCode, chatID)
+	VALUES ($1, $2, $3)
+	ON CONFLICT (userID) DO UPDATE
+		SET chatCode = excluded.chatCode,
+			chatID = excluded.chatID;`)
 	if err != nil {
 		log.Fatalf("Could not prepare setChatPair query:%v\n", err)
 	}
@@ -66,19 +70,22 @@ func setChatPair(ctx context.Context, cp ChatPair) {
 }
 
 func registerSecret(ctx context.Context, userID int, secret string) {
-	query, err := DB.PrepareContext(ctx, `INSERT INTO userbots SET userID = $1, secret = $2
-										ON CONFLICT (userID) DO UPDATE SET secret = $2`)
+	query, err := DB.PrepareContext(ctx, `
+	INSERT INTO userbots (userID, secret)
+	VALUES ($1, $2)
+	ON CONFLICT (userID) DO UPDATE
+		SET secret = excluded.secret;`)
 	if err != nil {
-		log.Fatalf("Could not prepare setChatPair query:%v\n", err)
+		log.Fatalf("Could not prepare registerSecret query:%v\n", err)
 	}
-	_, err = query.ExecContext(ctx, userID)
+	_, err = query.ExecContext(ctx, userID, secret)
 	if err != nil {
-		log.Fatalf("Unable to get chat pair:%v\n", err)
+		log.Fatalf("Unable to register secret:%v\n", err)
 	}
 }
 
 func getSecret(ctx context.Context, userID int) string {
-	query, err := DB.PrepareContext(ctx, "SELECT * FROM userbots WHERE userID = $1;")
+	query, err := DB.PrepareContext(ctx, "SELECT secret FROM userbots WHERE userID = $1;")
 	if err != nil {
 		log.Fatalf("Could not prepare getSecret query:%v\n", err)
 	}
@@ -90,7 +97,7 @@ func getSecret(ctx context.Context, userID int) string {
 		if err == sql.ErrNoRows {
 			return ""
 		} else {
-			log.Fatalf("Chat pair scan error:%v\n", err)
+			log.Fatalf("Secret scan error:%v\n", err)
 		}
 	}
 	return secret

@@ -11,22 +11,112 @@ import (
 	iris "github.com/sh2nk/shreks-callback/iris-callback-api"
 )
 
-func OnAddUser(ctx context.Context, w http.ResponseWriter) {
+func OnDeleteMessages(ctx context.Context, w http.ResponseWriter) {
 	// Get signal value from conetxt
 	s := ctx.Value(signalKey).(iris.IrisSignal)
+	o := s.Object.(iris.DeleteMessages)
+
+	b := params.NewMessagesDeleteBuilder()
+	cp, _ := getChatPair(ctx, s.UserID, o.Chat)
+
+	b.DeleteForAll(true)
+	b.Spam(o.IsSpam)
+	b.MessageIDs(o.LocalID)
+
+	_, err := VK.MessagesDelete(b.Params)
+	if err != nil {
+		log.Printf("Couldn't delete messages: %v", err)
+		sendMessage(fmt.Sprint(iris.Icons.Warn, "Не вышло удалить сообщения: ", err.Error()), cp.ChatID)
+		return
+	}
+
+	sendMessage(fmt.Sprint(iris.Icons.SuccessOff, "Подчистили гавнецо"), cp.ChatID)
+}
+
+func OnDeleteMessagesFromUser(ctx context.Context, w http.ResponseWriter) {
+	// Get signal value from conetxt
+	s := ctx.Value(signalKey).(iris.IrisSignal)
+	o := s.Object.(iris.DeleteMessagesFromUser)
+
+	cp, _ := getChatPair(ctx, s.UserID, o.Chat)
+
+	var msg []int
+
+	for len(msg) <= o.Amount {
+		b := params.NewMessagesGetHistoryBuilder()
+		b.Count(o.Amount)
+		b.PeerID(2000000000 + cp.ChatID)
+
+		resp, err := VK.MessagesGetHistory(b.Params)
+		if err != nil {
+			log.Printf("Couldn't obtain message history: %v", err)
+			sendMessage(fmt.Sprint(iris.Icons.Warn, "Не вышло получить историю сообщений: ", err.Error()), cp.ChatID)
+			return
+		}
+
+		for _, m := range resp.Items {
+			if m.FromID == o.UserID {
+				msg = append(msg, m.ID)
+			}
+		}
+	}
+
+	b := params.NewMessagesDeleteBuilder()
+	b.DeleteForAll(true)
+	b.Spam(o.IsSpam)
+	b.MessageIDs(msg)
+
+	_, err := VK.MessagesDelete(b.Params)
+	if err != nil {
+		log.Printf("Couldn't delete messages: %v", err)
+		sendMessage(fmt.Sprint(iris.Icons.Warn, "Не вышло удалить сообщения: ", err.Error()), cp.ChatID)
+	}
+
+	sendMessage(fmt.Sprint(iris.Icons.SuccessOff, "Подчистили гавнецо"), cp.ChatID)
+}
+
+func OnBanExpired(ctx context.Context, w http.ResponseWriter) {
+	// Get signal value from conetxt
+	s := ctx.Value(signalKey).(iris.IrisSignal)
+	o := s.Object.(iris.BanExpired)
 
 	b := params.NewMessagesAddChatUserBuilder()
-	cp, _ := getChatPair(ctx, s.UserID, s.Object.(iris.AddUser).Chat)
+	cp, _ := getChatPair(ctx, s.UserID, o.Chat)
 
 	b.ChatID(cp.ChatID)
-	b.UserID(s.Object.(iris.AddUser).UserID)
+	b.UserID(o.UserID)
 	b.Params["visible_messages_count"] = 250
 
 	_, err := VK.MessagesAddChatUser(b.Params)
 	if err != nil {
 		log.Printf("Couldn't add user to chat: %v", err)
 		sendMessage(fmt.Sprint(iris.Icons.Warn, "Ошибка добавления: ", err.Error()), cp.ChatID)
+		return
 	}
+
+	sendMessage(fmt.Sprint(iris.Icons.Info, "Срок бана пользователя истек. Причина бана была: ", o.Reason), cp.ChatID)
+}
+
+func OnAddUser(ctx context.Context, w http.ResponseWriter) {
+	// Get signal value from conetxt
+	s := ctx.Value(signalKey).(iris.IrisSignal)
+	o := s.Object.(iris.AddUser)
+
+	b := params.NewMessagesAddChatUserBuilder()
+	cp, _ := getChatPair(ctx, s.UserID, o.Chat)
+
+	b.ChatID(cp.ChatID)
+	b.UserID(o.UserID)
+	b.Params["visible_messages_count"] = 250
+
+	_, err := VK.MessagesAddChatUser(b.Params)
+	if err != nil {
+		log.Printf("Couldn't add user to chat: %v", err)
+		sendMessage(fmt.Sprint(iris.Icons.Warn, "Ошибка добавления: ", err.Error()), cp.ChatID)
+		return
+	}
+
+	sendMessage(fmt.Sprint(iris.Icons.Success, "Вернули пользователя"), cp.ChatID)
 }
 
 func OnSubscribeSignals(ctx context.Context, w http.ResponseWriter) {
@@ -39,6 +129,7 @@ func OnSubscribeSignals(ctx context.Context, w http.ResponseWriter) {
 		chat, err := searchChat(s.Message.Date, s.UserID, o.Text, 10)
 		if err != nil {
 			log.Printf("Falied to subscribe userbot: %v", err)
+			return
 		}
 		cp = ChatPair{
 			UserID:   s.UserID,
