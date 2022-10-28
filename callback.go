@@ -40,7 +40,7 @@ func Auth(next http.Handler) http.Handler {
 		// Get signal value from conetxt
 		signal, ok := ctx.Value(signalKey).(iris.IrisSignal)
 		if !ok {
-			err := errors.New("Signal context error")
+			err := errors.New("signal context error")
 			log.Printf("Can't perform auth: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -65,7 +65,7 @@ func Callback(next http.Handler) http.Handler {
 		// Get signal value from conetxt
 		signal, ok := ctx.Value(signalKey).(iris.IrisSignal)
 		if !ok {
-			err := errors.New("Signal context error")
+			err := errors.New("signal context error")
 			log.Printf("Callback falied: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -73,9 +73,9 @@ func Callback(next http.Handler) http.Handler {
 
 		switch signal.Method {
 		case "addUser":
-			OnAddUser(ctx, w, signal)
+			OnAddUser(ctx, w)
 		case "subscribeSignals":
-			OnSubscribeSignals(ctx, w, signal)
+			OnSubscribeSignals(ctx, w)
 		}
 
 		next.ServeHTTP(w, r)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,7 +11,10 @@ import (
 	iris "github.com/sh2nk/shreks-callback/iris-callback-api"
 )
 
-func OnAddUser(ctx context.Context, w http.ResponseWriter, s iris.IrisSignal) {
+func OnAddUser(ctx context.Context, w http.ResponseWriter) {
+	// Get signal value from conetxt
+	s := ctx.Value(signalKey).(iris.IrisSignal)
+
 	b := params.NewMessagesAddChatUserBuilder()
 	cp, _ := getChatPair(ctx, s.UserID, s.Object.(iris.AddUser).Chat)
 
@@ -25,13 +29,45 @@ func OnAddUser(ctx context.Context, w http.ResponseWriter, s iris.IrisSignal) {
 	}
 }
 
-func OnSubscribeSignals(ctx context.Context, w http.ResponseWriter, s iris.IrisSignal) {
+func OnSubscribeSignals(ctx context.Context, w http.ResponseWriter) {
+	// Get signal value from conetxt
+	s := ctx.Value(signalKey).(iris.IrisSignal)
+
 	cp, ok := getChatPair(ctx, s.UserID, s.Object.(iris.SubscribeSignals).Chat)
 	if !ok {
 
 	}
 
 	sendMessage(fmt.Sprint(iris.Icons.Success, "Беседа распознана"), cp.ChatID)
+}
+
+func searchChat(date int, userID int, text string, depth int) (int, error) {
+	b := params.NewMessagesGetConversationsBuilder()
+	b.Count(depth)
+
+	resp, err := VK.MessagesGetConversations(b.Params)
+	if err != nil {
+		return 0, err
+	}
+	for _, chat := range resp.Items {
+		if chat.Conversation.Peer.Type == "chat" {
+			b := params.NewMessagesGetHistoryBuilder()
+			b.Count(depth)
+			b.PeerID(chat.Conversation.Peer.ID)
+
+			resp, err := VK.MessagesGetHistory()
+			if err != nil {
+				return 0, err
+			}
+
+			for _, msg := range resp.Items {
+				if (msg.Date == date) && (msg.FromID == userID) && (msg.Text == text) {
+					return chat.Conversation.Peer.LocalID, nil
+				}
+			}
+		}
+	}
+	return 0, errors.New("chat not found")
 }
 
 func sendMessage(m string, chatID int) {

@@ -55,7 +55,7 @@ func main() {
 	registerSecret(ctx, UserID, getEnv("USERBOT_SECRET", "s0me-s3r1ous-sh1t"))
 
 	mux := http.NewServeMux()
-	mux.Handle("/callback", Auth(ctx, Callback(ctx, http.HandlerFunc(OK))))
+	mux.Handle("/callback", HandleSignal(Auth(Callback(OK()))))
 	log.Printf("Started callback route on %s...", Addr)
 	http.ListenAndServe(Addr, mux)
 }
