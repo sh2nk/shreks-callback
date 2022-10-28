@@ -42,9 +42,13 @@ func OnDeleteMessagesFromUser(ctx context.Context, w http.ResponseWriter) {
 
 	var msg []int
 
-	for len(msg) <= o.Amount {
+	if o.Amount == 0 {
+		o.Amount = 1
+	}
+
+	for len(msg) < o.Amount {
 		b := params.NewMessagesGetHistoryBuilder()
-		b.Count(o.Amount)
+		b.Count(200)
 		b.PeerID(2000000000 + cp.ChatID)
 
 		resp, err := VK.MessagesGetHistory(b.Params)
@@ -55,7 +59,7 @@ func OnDeleteMessagesFromUser(ctx context.Context, w http.ResponseWriter) {
 		}
 
 		for _, m := range resp.Items {
-			if m.FromID == o.UserID {
+			if (m.FromID == o.UserID) && (len(msg) < o.Amount) {
 				msg = append(msg, m.ID)
 			}
 		}
@@ -64,12 +68,14 @@ func OnDeleteMessagesFromUser(ctx context.Context, w http.ResponseWriter) {
 	b := params.NewMessagesDeleteBuilder()
 	b.DeleteForAll(true)
 	b.Spam(o.IsSpam)
+	fmt.Println(len(msg))
 	b.MessageIDs(msg)
 
 	_, err := VK.MessagesDelete(b.Params)
 	if err != nil {
 		log.Printf("Couldn't delete messages: %v", err)
 		sendMessage(fmt.Sprint(iris.Icons.Warn, "Не вышло удалить сообщения: ", err.Error()), cp.ChatID)
+		return
 	}
 
 	sendMessage(fmt.Sprint(iris.Icons.SuccessOff, "Подчистили гавнецо"), cp.ChatID)
@@ -94,7 +100,7 @@ func OnBanExpired(ctx context.Context, w http.ResponseWriter) {
 		return
 	}
 
-	sendMessage(fmt.Sprint(iris.Icons.Info, "Срок бана пользователя истек. Причина бана была: ", o.Reason), cp.ChatID)
+	sendMessage(fmt.Sprint(iris.Icons.Info, "Срок бана пользователя истек."), cp.ChatID)
 }
 
 func OnAddUser(ctx context.Context, w http.ResponseWriter) {

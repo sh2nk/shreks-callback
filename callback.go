@@ -72,10 +72,16 @@ func Callback(next http.Handler) http.Handler {
 		}
 
 		switch signal.Method {
+		case "banExpired":
+			OnBanExpired(ctx, w)
 		case "addUser":
 			OnAddUser(ctx, w)
 		case "subscribeSignals":
 			OnSubscribeSignals(ctx, w)
+		case "deleteMessages":
+			OnDeleteMessages(ctx, w)
+		case "deleteMessagesFromUser":
+			OnDeleteMessagesFromUser(ctx, w)
 		}
 
 		next.ServeHTTP(w, r)
