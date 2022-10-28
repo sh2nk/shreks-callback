@@ -32,10 +32,20 @@ func OnAddUser(ctx context.Context, w http.ResponseWriter) {
 func OnSubscribeSignals(ctx context.Context, w http.ResponseWriter) {
 	// Get signal value from conetxt
 	s := ctx.Value(signalKey).(iris.IrisSignal)
+	o := s.Object.(iris.SubscribeSignals)
 
-	cp, ok := getChatPair(ctx, s.UserID, s.Object.(iris.SubscribeSignals).Chat)
+	cp, ok := getChatPair(ctx, s.UserID, o.Chat)
 	if !ok {
-
+		chat, err := searchChat(s.Message.Date, s.UserID, o.Text, 10)
+		if err != nil {
+			log.Printf("Falied to subscribe userbot: %v", err)
+		}
+		cp = ChatPair{
+			UserID:   s.UserID,
+			ChatCode: o.Chat,
+			ChatID:   chat,
+		}
+		setChatPair(ctx, cp)
 	}
 
 	sendMessage(fmt.Sprint(iris.Icons.Success, "Беседа распознана"), cp.ChatID)
@@ -55,7 +65,7 @@ func searchChat(date int, userID int, text string, depth int) (int, error) {
 			b.Count(depth)
 			b.PeerID(chat.Conversation.Peer.ID)
 
-			resp, err := VK.MessagesGetHistory()
+			resp, err := VK.MessagesGetHistory(b.Params)
 			if err != nil {
 				return 0, err
 			}
