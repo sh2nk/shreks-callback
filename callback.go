@@ -49,6 +49,7 @@ func Auth(next http.Handler) http.Handler {
 		// Check user secret
 		if signal.Secret != getSecret(ctx, signal.UserID) {
 			err := errors.New("Auth error: invalid secret")
+			log.Printf("Can't perform auth: %v", err)
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
